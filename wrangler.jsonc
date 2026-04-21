@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jobtracker",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // D1 Database
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jobtracker-db",
+      "database_id": "YOUR_D1_DATABASE_ID"
+    }
+  ],
+
+  // Workers AI for resume analysis
+  "ai": {
+    "binding": "AI"
+  },
+
+  // API keys - set these in Cloudflare Dashboard > Workers & Pages > jobtracker > Settings > Environment Variables
+  // For local dev, create a .dev.vars file (gitignored):
+  //   THEIRSTACK_API_KEY=your_key_here
+  //   ADZUNA_APP_ID=your_id_here
+  //   ADZUNA_APP_KEY=your_key_here
+  "vars": {}
+}

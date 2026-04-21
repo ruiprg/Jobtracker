@@ -1,0 +1,24 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "jobtracker-cron",
+  "main": "cron.ts",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Schedule: every day at 7:00 AM UTC
+  "triggers": {
+    "crons": ["0 7 * * *"]
+  },
+
+  // Same D1 database as the Pages project
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jobtracker-db",
+      "database_id": "YOUR_D1_DATABASE_ID"
+    }
+  ]
+  // Set these as secrets:
+  // wrangler secret put RESEND_API_KEY -c worker/wrangler.jsonc
+  // wrangler secret put NOTIFICATION_EMAIL -c worker/wrangler.jsonc
+}
