@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '../hooks/useToast';
 import {
   IconSearch,
@@ -42,20 +42,16 @@ export function DatabaseJobsPage() {
   const { toast } = useToast();
   const [allJobs, setAllJobs] = useState<DbJob[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [jobType, setJobType] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
   const [remoteOnly, setRemoteOnly] = useState(false);
 
-  // Selected job for detail view
   const [selectedJob, setSelectedJob] = useState<DbJob | null>(null);
 
-  // Load jobs from JSON
   useEffect(() => {
     let cancelled = false;
     const loadJobs = async () => {
@@ -83,13 +79,12 @@ export function DatabaseJobsPage() {
     };
   }, [toast]);
 
-  // Filter and paginate jobs
-  const getFilteredJobs = useCallback(() => {
-    let filtered = allJobs;
+  const filteredJobs = useMemo(() => {
+    let result = [...allJobs];
 
     if (query) {
       const q = query.toLowerCase();
-      filtered = filtered.filter(
+      result = result.filter(
         (j) =>
           j.job_title.toLowerCase().includes(q) ||
           j.company.toLowerCase().includes(q) ||
@@ -98,65 +93,40 @@ export function DatabaseJobsPage() {
     }
     if (location) {
       const loc = location.toLowerCase();
-      filtered = filtered.filter(
+      result = result.filter(
         (j) =>
           j.location.toLowerCase().includes(loc) ||
-          j.location_country.toLowerCase().includes(loc) ||
-          j.location_city.toLowerCase().includes(loc)
+          (j.location_country || '').toLowerCase().includes(loc) ||
+          (j.location_city || '').toLowerCase().includes(loc)
       );
     }
     if (jobType) {
-      filtered = filtered.filter((j) => j.job_type === jobType);
+      result = result.filter((j) => j.job_type === jobType);
     }
     if (experienceLevel) {
-      filtered = filtered.filter((j) => j.experience_level === experienceLevel);
+      result = result.filter((j) => j.experience_level === experienceLevel);
     }
     if (remoteOnly) {
-      filtered = filtered.filter((j) => j.location_remote === 1);
+      result = result.filter((j) => j.location_remote === 1);
     }
 
-    // Sort by date_added descending
-    filtered.sort((a, b) => (b.date_added || '').localeCompare(a.date_added || ''));
-
-    return filtered;
+    result.sort((a, b) => (b.date_added || '').localeCompare(a.date_added || ''));
+    return result;
   }, [allJobs, query, location, jobType, experienceLevel, remoteOnly]);
 
-  useEffect(() => {
-    const filtered = getFilteredJobs();
-    const newTotalPages = Math.ceil(filtered.length / pageSize);
-    setTotalPages(newTotalPages);
-
-    const start = (page - 1) * pageSize;
-    const paginated = filtered.slice(start, start + pageSize);
-    setAllJobs((prev) => prev); // keep allJobs state
-    // We need a separate state for displayed jobs
-    // Let me restructure this
-  }, [allJobs, page, getFilteredJobs]);
-
-  // Restructure: use separate state for displayed jobs
-  const [displayedJobs, setDisplayedJobs] = useState<DbJob[]>([]);
-
-  useEffect(() => {
-    const filtered = getFilteredJobs();
-    const newTotalPages = Math.ceil(filtered.length / pageSize);
-    setTotalPages(newTotalPages);
-
-    const start = (page - 1) * pageSize;
-    setDisplayedJobs(filtered.slice(start, start + pageSize));
-  }, [allJobs, page, getFilteredJobs]);
-
-  const totalFiltered = getFilteredJobs().length;
+  const totalPages = Math.ceil(filteredJobs.length / pageSize);
+  const start = (page - 1) * pageSize;
+  const displayedJobs = filteredJobs.slice(start, start + pageSize);
 
   return (
     <div>
       <div className="page-header page-header-actions">
         <div>
           <h2>Job Listings Database</h2>
-          <p>{totalFiltered} jobs{totalFiltered !== allJobs.length ? ` (from ${allJobs.length} total)` : ''}</p>
+          <p>{filteredJobs.length} jobs{filteredJobs.length !== allJobs.length ? ` (from ${allJobs.length} total)` : ''}</p>
         </div>
       </div>
 
-      {/* Filter Bar */}
       <div className="filters-bar">
         <div className="search-input">
           <IconSearch />
@@ -206,7 +176,6 @@ export function DatabaseJobsPage() {
         </label>
       </div>
 
-      {/* Job List */}
       {loading ? (
         <div className="loading">
           <div className="spinner" /> Loading jobs...
@@ -257,7 +226,6 @@ export function DatabaseJobsPage() {
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="pagination">
               <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
@@ -274,7 +242,6 @@ export function DatabaseJobsPage() {
         </>
       )}
 
-      {/* Job Detail Modal */}
       {selectedJob && (
         <div className="modal-overlay" onClick={() => setSelectedJob(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
