@@ -8,9 +8,11 @@ import {
   IconSettings,
   IconWind,
   IconStar,
+  IconFile,
 } from './components/Icons';
 import { DashboardPage } from './pages/DashboardPage';
 import { JobsPage } from './pages/JobsPage';
+import { DatabaseJobsPage } from './pages/DatabaseJobsPage';
 import { SavedPage } from './pages/SavedPage';
 import { PipelinePage } from './pages/PipelinePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -25,6 +27,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/db-jobs" element={<DatabaseJobsPage />} />
             <Route path="/saved" element={<SavedPage />} />
             <Route path="/pipeline" element={<PipelinePage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
@@ -51,6 +54,9 @@ function Sidebar() {
         </NavLink>
         <NavLink to="/jobs" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <IconBriefcase /> Job Listings
+        </NavLink>
+        <NavLink to="/db-jobs" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <IconFile /> Job Listings Database
         </NavLink>
         <NavLink to="/saved" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <IconStar /> Saved

@@ -66,6 +66,7 @@ type NormalizedJob = {
   external_id: string;
   date_posted: string;
   remote?: boolean;
+  tags: string[];
 };
 
 // ============================================================
@@ -278,15 +279,15 @@ async function fetchTheirStack(
 // ============================================================
 async function storeJobs(
   db: D1Database,
-  jobs: (NormalizedJob & { source: string; search_query: string })[]
+  jobs: (NormalizedJob & { source: string; search_query: string; tags: string[] })[]
 ): Promise<number> {
   let inserted = 0;
   for (const job of jobs) {
     try {
       await db
         .prepare(
-          `INSERT OR IGNORE INTO jobs (external_id, title, company, location, salary_min, salary_max, description, url, source, search_query, remote, date_posted)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT OR IGNORE INTO jobs (external_id, title, company, location, salary_min, salary_max, description, url, source, search_query, remote, date_posted, tags)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           job.external_id,
@@ -300,7 +301,8 @@ async function storeJobs(
           job.source,
           job.search_query,
           job.remote ? 1 : 0,
-          job.date_posted
+          job.date_posted,
+          JSON.stringify(job.tags)
         )
         .run();
       inserted++;
@@ -325,28 +327,37 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
   const offset = (page - 1) * limit;
 
-  let where = 'WHERE 1=1';
-  const params: any[] = [];
+let where = 'WHERE 1=1';
+const params: any[] = [];
 
-  if (query) {
-    where += ' AND (title LIKE ? OR company LIKE ? OR description LIKE ?)';
-    const q = `%${query}%`;
-    params.push(q, q, q);
+if (query) {
+  where += ' AND (title LIKE ? OR company LIKE ? OR description LIKE ?)';
+  const q = `%${query}%`;
+  params.push(q, q, q);
+}
+if (location) {
+  where += ' AND location LIKE ?';
+  params.push(`%${location}%`);
+}
+if (source) {
+  where += ' AND source = ?';
+  params.push(source);
+}
+if (remote === '1') {
+  where += ' AND remote = 1';
+}
+if (newOnly === '1') {
+  where += ' AND is_new = 1';
+}
+const tagsParam = url.searchParams.get('tags') || '';
+if (tagsParam) {
+  const tagsArray = tagsParam.split(',').map((t) => t.trim()).filter(Boolean);
+  for (const tag of tagsArray) {
+    where += ' AND tags LIKE ?';
+    // We are looking for the tag as a string in the JSON array, e.g., '"engineer"' in '["engineer","remote"]'
+    params.push(`%${tag}%`);
   }
-  if (location) {
-    where += ' AND location LIKE ?';
-    params.push(`%${location}%`);
-  }
-  if (source) {
-    where += ' AND source = ?';
-    params.push(source);
-  }
-  if (remote === '1') {
-    where += ' AND remote = 1';
-  }
-  if (newOnly === '1') {
-    where += ' AND is_new = 1';
-  }
+}
 
   const countResult = await ctx.env.DB.prepare(`SELECT COUNT(*) as total FROM jobs ${where}`)
     .bind(...params)
@@ -428,11 +439,11 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
     sourceCounts['adzuna'] = (sourceCounts['adzuna'] || 0) + adzunaJobs.length;
 
     const allJobs = [
-      ...theirstackJobs.map((j: any) => ({ ...j, source: 'theirstack', search_query: keyword })),
-      ...remotiveJobs.map((j: any) => ({ ...j, source: 'remotive', search_query: keyword })),
-      ...arbeitnowJobs.map((j: any) => ({ ...j, source: 'arbeitnow', search_query: keyword })),
-      ...jobicyJobs.map((j: any) => ({ ...j, source: 'jobicy', search_query: keyword })),
-      ...adzunaJobs.map((j: any) => ({ ...j, source: 'adzuna', search_query: keyword })),
+      ...theirstackJobs.map((j: any) => ({ ...j, source: 'theirstack', search_query: keyword, tags: keywords })),
+      ...remotiveJobs.map((j: any) => ({ ...j, source: 'remotive', search_query: keyword, tags: keywords })),
+      ...arbeitnowJobs.map((j: any) => ({ ...j, source: 'arbeitnow', search_query: keyword, tags: keywords })),
+      ...jobicyJobs.map((j: any) => ({ ...j, source: 'jobicy', search_query: keyword, tags: keywords })),
+      ...adzunaJobs.map((j: any) => ({ ...j, source: 'adzuna', search_query: keyword, tags: keywords })),
     ];
 
     const inserted = await storeJobs(ctx.env.DB, allJobs);

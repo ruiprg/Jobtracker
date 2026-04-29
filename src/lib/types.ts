@@ -15,6 +15,7 @@ export interface Job {
   url: string;
   source: 'theirstack' | 'remotive' | 'arbeitnow' | 'jobicy' | 'adzuna' | 'rss' | 'manual';
   search_query: string | null;
+  tags: string[];
   remote: number;
   date_posted: string | null;
   date_found: string;

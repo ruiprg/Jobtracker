@@ -14,12 +14,14 @@
     "types": "wrangler types --path='./functions/types.d.ts'"
   },
   "dependencies": {
+    "@types/sql.js": "^1.4.11",
+    "pdfjs-dist": "^4.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0",
     "recharts": "^2.15.0",
-    "xlsx": "^0.18.5",
-    "pdfjs-dist": "^4.9.0"
+    "sql.js": "^1.14.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250410.0",

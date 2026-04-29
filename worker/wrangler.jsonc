@@ -15,7 +15,8 @@
     {
       "binding": "DB",
       "database_name": "jobtracker-db",
-      "database_id": "YOUR_D1_DATABASE_ID"
+      "database_id": "fb92b853-b9ca-4aea-a17a-92255c9c4411"
+
     }
   ]
   // Set these as secrets:
