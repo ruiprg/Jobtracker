@@ -8,7 +8,6 @@ import {
   IconChevronRight,
   IconExternalLink,
 } from '../components/Icons';
-import initSqlJs, { type Database } from 'sql.js';
 
 interface DbJob {
   id: number;
@@ -37,14 +36,14 @@ interface DbJob {
   post_language: string;
 }
 
+const pageSize = 30;
+
 export function DatabaseJobsPage() {
   const { toast } = useToast();
-  const [jobs, setJobs] = useState<DbJob[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<DbJob[]>([]);
+  const [allJobs, setAllJobs] = useState<DbJob[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [db, setDb] = useState<Database | null>(null);
 
   // Filters
   const [query, setQuery] = useState('');
@@ -56,27 +55,21 @@ export function DatabaseJobsPage() {
   // Selected job for detail view
   const [selectedJob, setSelectedJob] = useState<DbJob | null>(null);
 
-  const pageSize = 30;
-
-  // Load database
+  // Load jobs from JSON
   useEffect(() => {
     let cancelled = false;
-    const loadDb = async () => {
+    const loadJobs = async () => {
       setLoading(true);
       try {
-        const SQL = await initSqlJs({
-          locateFile: (file) => `https://sql.js.org/dist/${file}`,
-        });
-        const response = await fetch('/jobs.db');
-        if (!response.ok) throw new Error('Failed to load database file');
-        const buffer = await response.arrayBuffer();
-        const database = new SQL.Database(new Uint8Array(buffer));
+        const response = await fetch('/jobs-data.json');
+        if (!response.ok) throw new Error('Failed to load jobs data');
+        const data: DbJob[] = await response.json();
         if (!cancelled) {
-          setDb(database);
+          setAllJobs(data);
         }
       } catch (e: any) {
         if (!cancelled) {
-          toast(e.message || 'Failed to load database', 'error');
+          toast(e.message || 'Failed to load jobs', 'error');
         }
       } finally {
         if (!cancelled) {
@@ -84,82 +77,82 @@ export function DatabaseJobsPage() {
         }
       }
     };
-    loadDb();
+    loadJobs();
     return () => {
       cancelled = true;
     };
   }, [toast]);
 
-  // Query jobs from database
-  const loadJobs = useCallback(() => {
-    if (!db) return;
-
-    let sql = 'SELECT * FROM job_openings WHERE 1=1';
-    const params: string[] = [];
+  // Filter and paginate jobs
+  const getFilteredJobs = useCallback(() => {
+    let filtered = allJobs;
 
     if (query) {
-      sql += ' AND (job_title LIKE ? OR company LIKE ? OR job_description LIKE ?)';
-      const q = `%${query}%`;
-      params.push(q, q, q);
+      const q = query.toLowerCase();
+      filtered = filtered.filter(
+        (j) =>
+          j.job_title.toLowerCase().includes(q) ||
+          j.company.toLowerCase().includes(q) ||
+          j.job_description.toLowerCase().includes(q)
+      );
     }
     if (location) {
-      sql += ' AND (location LIKE ? OR location_country LIKE ? OR location_city LIKE ?)';
-      const loc = `%${location}%`;
-      params.push(loc, loc, loc);
+      const loc = location.toLowerCase();
+      filtered = filtered.filter(
+        (j) =>
+          j.location.toLowerCase().includes(loc) ||
+          j.location_country.toLowerCase().includes(loc) ||
+          j.location_city.toLowerCase().includes(loc)
+      );
     }
     if (jobType) {
-      sql += ' AND job_type = ?';
-      params.push(jobType);
+      filtered = filtered.filter((j) => j.job_type === jobType);
     }
     if (experienceLevel) {
-      sql += ' AND experience_level = ?';
-      params.push(experienceLevel);
+      filtered = filtered.filter((j) => j.experience_level === experienceLevel);
     }
     if (remoteOnly) {
-      sql += ' AND location_remote = 1';
+      filtered = filtered.filter((j) => j.location_remote === 1);
     }
 
-    // Get total count
-    const countResult = db.exec(`SELECT COUNT(*) as total FROM (${sql})`, params);
-    const total = countResult[0]?.values[0][0] as number || 0;
-    const newTotalPages = Math.ceil(total / pageSize);
+    // Sort by date_added descending
+    filtered.sort((a, b) => (b.date_added || '').localeCompare(a.date_added || ''));
 
-    // Get paginated results
-    sql += ' ORDER BY date_added DESC LIMIT ? OFFSET ?';
-    params.push(String(pageSize), String((page - 1) * pageSize));
-
-    const results = db.exec(sql, params);
-    if (results.length > 0) {
-      const columns = results[0].columns;
-      const rows = results[0].values;
-      const jobList: DbJob[] = rows.map((row) => {
-        const job: any = {};
-        columns.forEach((col, i) => {
-          job[col] = row[i];
-        });
-        return job as DbJob;
-      });
-      setJobs(jobList);
-      setFilteredJobs(jobList);
-    } else {
-      setJobs([]);
-      setFilteredJobs([]);
-    }
-    setTotalPages(newTotalPages);
-  }, [db, page, query, location, jobType, experienceLevel, remoteOnly]);
+    return filtered;
+  }, [allJobs, query, location, jobType, experienceLevel, remoteOnly]);
 
   useEffect(() => {
-    if (db) {
-      loadJobs();
-    }
-  }, [db, loadJobs]);
+    const filtered = getFilteredJobs();
+    const newTotalPages = Math.ceil(filtered.length / pageSize);
+    setTotalPages(newTotalPages);
+
+    const start = (page - 1) * pageSize;
+    const paginated = filtered.slice(start, start + pageSize);
+    setAllJobs((prev) => prev); // keep allJobs state
+    // We need a separate state for displayed jobs
+    // Let me restructure this
+  }, [allJobs, page, getFilteredJobs]);
+
+  // Restructure: use separate state for displayed jobs
+  const [displayedJobs, setDisplayedJobs] = useState<DbJob[]>([]);
+
+  useEffect(() => {
+    const filtered = getFilteredJobs();
+    const newTotalPages = Math.ceil(filtered.length / pageSize);
+    setTotalPages(newTotalPages);
+
+    const start = (page - 1) * pageSize;
+    setDisplayedJobs(filtered.slice(start, start + pageSize));
+  }, [allJobs, page, getFilteredJobs]);
+
+  const totalFiltered = getFilteredJobs().length;
 
   return (
     <div>
       <div className="page-header page-header-actions">
         <div>
           <h2>Job Listings Database</h2>
-          <p>{jobs.length} jobs loaded from database</p>
+          <p>{totalFiltered} jobs{totalFiltered !== allJobs.length ? ` (from ${allJobs.length} total)` : ''}</p>
         </div>
       </div>
 
@@ -172,7 +165,7 @@ export function DatabaseJobsPage() {
             placeholder="Search jobs... (e.g., engineer, developer, analyst)"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            onKeyDown={(e) => e.key === 'Enter' && loadJobs()}
+            onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
           />
         </div>
         <input
@@ -216,9 +209,9 @@ export function DatabaseJobsPage() {
       {/* Job List */}
       {loading ? (
         <div className="loading">
-          <div className="spinner" /> Loading database...
+          <div className="spinner" /> Loading jobs...
         </div>
-      ) : jobs.length === 0 ? (
+      ) : displayedJobs.length === 0 ? (
         <div className="empty-state">
           <h3>No jobs found</h3>
           <p>Try adjusting your filters or search query.</p>
@@ -226,7 +219,7 @@ export function DatabaseJobsPage() {
       ) : (
         <>
           <div className="job-list">
-            {jobs.map((job) => (
+            {displayedJobs.map((job) => (
               <div
                 key={job.id}
                 className="job-card"
