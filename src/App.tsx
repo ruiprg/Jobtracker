@@ -56,7 +56,7 @@ function Sidebar() {
           <IconBriefcase /> Job Listings
         </NavLink>
         <NavLink to="/db-jobs" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <IconFile /> Job Listings Database
+          <IconFile /> Database
         </NavLink>
         <NavLink to="/saved" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <IconStar /> Saved

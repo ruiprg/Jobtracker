@@ -122,7 +122,7 @@ export function DatabaseJobsPage() {
     <div>
       <div className="page-header page-header-actions">
         <div>
-          <h2>Job Listings Database</h2>
+          <h2>Database</h2>
           <p>{filteredJobs.length} jobs{filteredJobs.length !== allJobs.length ? ` (from ${allJobs.length} total)` : ''}</p>
         </div>
       </div>
