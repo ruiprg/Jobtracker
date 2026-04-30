@@ -20,10 +20,10 @@
   --color-text-tertiary: #9C9B97;
   --color-text-inverse: #FFFFFF;
 
-  /* Accent - warm amber */
-  --color-accent: #D97706;
-  --color-accent-light: #FEF3C7;
-  --color-accent-hover: #B45309;
+  /* Accent - cool blue (TEST) */
+  --color-accent: #2563EB;
+  --color-accent-light: #DBEAFE;
+  --color-accent-hover: #1D4ED8;
 
   /* Status colors */
   --color-saved: #6B7280;
